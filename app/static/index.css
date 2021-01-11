@@ -1,0 +1,107 @@
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	display: block;
+	font-family: "Noto Sans TC", "Times New Roman", 
+		"微軟正黑體", "新細明體", arial, sans-serif;
+	line-height: 1.6;
+	/* color: rgb(0, 0, 0);	 */
+	/* margin: 0px 0px; */
+
+}
+a {
+	text-decoration: none;
+}
+.main {
+	/* margin-top: 10%; */
+  text-align: center;
+	margin: 0 50px;
+
+}
+#title {
+	color: #0874b8;
+    font-family: "Comic Sans MS";
+}
+#court {
+	width: 550px;
+}
+
+.container {
+	display: flex;
+	flex-direction: row;
+	align-items: flex-start;
+	justify-content: center;
+
+}
+
+.panel {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	justify-content: center;
+
+}
+
+.board1 {
+	border:  2px solid #666;
+	border-radius: 10px;
+	margin: 10px;
+	padding: 10px 40px;
+	width: 260px;
+	min-height: 200px;
+}
+
+.board2 {
+	border:  2px solid #666;
+	border-radius: 10px;
+	margin: 10px;
+	padding: 10px 40px;
+	min-width: 200px;
+	min-height: 200px;
+}
+button {
+	font-size: 1em;
+	margin: 3px;
+    padding: 7px 14px;
+    cursor: pointer;
+    border: 1px solid #eaeaef;
+    color: #fff;
+}
+.start {
+	background: #358a03;
+}
+
+.stop{
+    background: #e33e33;
+}
+
+button.player{
+	background: #203ed3;
+}
+
+#change_player{
+	color: #fff;
+
+}
+#parameters{
+	display: flex;
+	flex-direction: row;
+	align-items: flex-start;
+	justify-content: center;
+}
+
+#parameters2{
+	text-align:left;
+	margin-left: 10px;
+}
+
+input{
+	border: solid 1px #ddd;
+	color: black;
+	background: #FFF9D3;
+	width: 100px;
+  }
+  

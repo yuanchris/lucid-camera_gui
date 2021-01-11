@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Index Page</title>
+    <link rel="stylesheet" href="/static/index.css">
+</head>
+<body>
+  <div class='main'>
+    <h2 id='title'>Lucid camera setting</h2>
+    <img id='court' src="/static/img/baseball.png"/>
+    <div class = 'container'>
+      <div class = 'panel'>
+        <div class = 'control board1'>
+          <h3>Camera (Only Save)</h3>
+          <button class="start" onclick='start()'>start save</button><br>
+          <button class="stop" onclick='stop()'>stop save</button>
+          <p id='show_server'>status:</p>
+        </div>
+    
+        <div class = 'control board1'>
+          <h3>Save + Preview</h3>
+          <button class="start" onclick='start_preview()'>start preview</button><br>
+          <p>Press "q" on images to stop</p>
+          <p id='show_preview'>status:</p>
+        </div>
+
+        <div class = 'control board1'>
+          <h3>4k streaming</h3>
+          <button class="start" onclick='start_streaming()'>start streaming</button><br>
+          <button class="stop" onclick='stop_streaming()'>stop streaming</button>
+          <p id='show_streaming'>status:</p>
+        </div>
+
+      </div>
+  
+      <div class = 'board2'>
+        <h3>Parameters</h3> 
+        <button class="player" onclick='to_default()'>Default </button>
+        <button class="player" onclick='submit_change()'>Submit </button>
+        </button>
+
+        <div id = 'parameters'>
+          <div>
+            <p>Width, Height:</p>
+            <p>Gain:</p>
+            <p>Exposure time(us):</p>
+            <p>Fps:</p>
+            
+
+          </div>
+          <div id = 'parameters2'>
+            <p>
+              <input type="number" min="0.0" id="camera_width" placeholder="input width" value = 4096 onchange = 'change()'>
+              <input type="number" min="0.0" id="camera_height" placeholder="input hight" value = 2160 onchange = 'change()'> 
+            </p>
+
+            <p>
+              <input type="number" min="0.0" max='48.0' id="gain" placeholder="input gain(float)" value = 0.0 onchange = 'change()'> min = 0.0, max = 48.0
+            </p>
+            <p>
+              <input type="number" min="26.0" id="exposure_time" placeholder="time(float)" value = 900000 onchange = 'change()'> 
+              <span id='exposure_time_max'>min = 30.0, max = 1000000/fps</span>
+            </p>
+            <p id='fps_value'>
+              0.0
+            </p>
+
+          </div>
+          
+        </div>
+        <p id='show_parameters'>status:</p>
+      </div>
+    </div>
+
+
+
+  </div>
+  <script src="/static/js/index.js"></script>
+</body>
+
+</html>
