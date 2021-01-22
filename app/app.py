@@ -8,6 +8,10 @@ app = Flask(__name__)
 def home():
     return render_template("index.html")
 
+@app.route("/view.html")
+def view():
+    return render_template("view.html")
+
 
 @app.route("/start_camera")
 def start_control():

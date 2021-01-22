@@ -1,6 +1,9 @@
 import socket, sys, json
+import asyncio
+import websockets
 import threading, time
 import os
+import random
 from datetime import datetime
 from pathlib import Path
 
@@ -12,13 +15,18 @@ from arena_api.buffer import BufferFactory
 from arena_api.system import system
 from arena_api.enums import PixelFormat
 
+import datetime
+import base64
 from PIL import Image as PIL_Image  # pip install Pillow
 # from my_camera import streaming
 class lucid_camera:
     def __init__(self):
         self.getImages_is_running = False
+        self.preview_is_running = False
 
         self.server_socket = None
+        self.preview_socket = None
+
         self.getImages_thread = None
         self.preview_process = None
 
@@ -45,12 +53,13 @@ class lucid_camera:
         while True:
             csock, addr = self.server_socket.accept()
             csock.settimeout(5)
-            print('Connected by ', addr)
+            print('Connected by ', addr, 'in 8060')
             try:
                 msg = csock.recv(1024)
                 receive_dict = msg.decode("utf-8")
                 receive_dict = json.loads(receive_dict)
                 if receive_dict["message"] == 'start_camera':
+                    self.preview_is_running = False
                     if self.getImages_is_running:
                         print('camerea is already started')
                         data_to_send = dict()
@@ -79,9 +88,8 @@ class lucid_camera:
 
                 elif receive_dict["message"] == 'stop_camera':
                     print('Stop camera')
-
-
                     self.getImages_is_running = False
+                    self.preview_is_running = False
                     print('getimages_thread is closed')
                     data_to_send = dict()
                     data_to_send["success"] = True
@@ -89,8 +97,11 @@ class lucid_camera:
 
                 elif receive_dict["message"] == 'start_preview':
                     self.getImages_is_running = False
-                    time.sleep(1)
-                    self.preview_process = multiprocessing.Process(target=self.start_preview_process)
+                    self.preview_is_running = True
+
+                    # self.preview_process = multiprocessing.Process(target=self.start_preview_process)
+
+                    self.preview_process = threading.Thread(target=self.start_preview_process)
                     self.preview_process.start()
 
                     time.sleep(2)
@@ -105,20 +116,26 @@ class lucid_camera:
                     csock.send(json.dumps(data_to_send).encode('utf-8'))
 
                 elif receive_dict["message"] == 'submit_change':
-                    self.getImages_is_running = False
-                    time.sleep(1)
+                    # self.getImages_is_running = False
+                    # self.preview_is_running = False
+                    # time.sleep(1)
 
                     print(receive_dict['data'])
-                    print(type(receive_dict['data']))
                     data = receive_dict['data']
                     self.camera_width = int(data['camera_width'])
                     self.camera_height = int(data['camera_height'])
                     self.gain = float(data['gain'])
                     self.exposure_time = float(data['exposure_time'])
-                    print(self.gain)
+
+
+
                     data_to_send = dict()
                     data_to_send["success"] = True
                     csock.send(json.dumps(data_to_send).encode('utf-8'))
+                    time.sleep(1)
+                    # self.preview_is_running = True
+                    # self.preview_process = threading.Thread(target=self.start_preview_process)
+                    # self.preview_process.start()
                 else:
                     data_to_send = dict()
                     data_to_send["success"] = False
@@ -155,6 +172,7 @@ class lucid_camera:
 
         self.set_gain(device, self.gain)
         print(f'''gain: {device.nodemap['Gain'].value}''')
+
         # ========================================================================
         with device.start_stream(2):
             count = 0
@@ -185,7 +203,7 @@ class lucid_camera:
                 # cv2.imshow('preview', frame)
                 # if cv2.waitKey(1) & 0xFF == ord('q'):
                 #     break
-                  
+                
                 device.requeue_buffer(image_buffer)
                 t4 += time.time()
                 if count % interval == 0 and count != 0:
@@ -199,69 +217,88 @@ class lucid_camera:
     
     def start_preview_process(self):
         print('start_preview_process')
-        devices = self.create_devices_with_tries()
-        device = devices[0]
-        print(device)
+        # ==== preview socket ====
 
-        # ====================== setting  ===========================================================
-        # Nodes Height Width
-        self.set_pixel(device, self.camera_width , self.camera_height)
-        print('width height:',device.nodemap['Width'].value, device.nodemap['Height'].value)
+        # loop = asyncio.new_event_loop()
+        # asyncio.set_event_loop(loop)
+        # start_server = websockets.serve(time, "127.0.0.1", 8061)
+        # asyncio.get_event_loop().run_until_complete(start_server)
+        # asyncio.get_event_loop().run_forever()
 
-        device.nodemap['PixelFormat'].value = PixelFormat.BayerRG8
-        device.nodemap['ADCBitDepth'].value = 'Bits8'
-        # print(nodemap['ADCBitDepth'])
 
-        # FPS
-        self.set_fps(device, device.nodemap['AcquisitionFrameRate'].max)
-        print('fps max', device.nodemap['AcquisitionFrameRate'].max)
-        print('fps',  device.nodemap['AcquisitionFrameRate'].value)
-        
-        # Exposure Time and Gain
-        self.set_exposure_time(device, self.exposure_time)
-        print(f'''Exposure Time : {device.nodemap['ExposureTime'].value}''')
-        self.set_gain(device, self.gain)
-        print(f'''gain: {device.nodemap['Gain'].value}''')
-        # ========================================================================
-        with device.start_stream(2):
-            count = 0
-            t1 = t2 = t3 = t4 = 0
-            interval = 40
-            while True:
-                count += 1
-                t1 += time.time()
+        async def preview_func(websocket,path):
+            devices = self.create_devices_with_tries()
+            device = devices[0]
+            print(device)
 
-                image_buffer = device.get_buffer()
-                nparray_reshaped = np.ctypeslib.as_array(image_buffer.pdata,shape=(image_buffer.height, image_buffer.width, int(image_buffer.bits_per_pixel / 8)))
-                t2 += time.time()
-                # ====  save file ======
-                path_time = self.time_update_function()
-                # path_time = f'file_{count}'
-                nparray_reshaped.tofile(f'imgs/{path_time}.raw')
+            # ====================== setting  ===========================================================
+            # Nodes Height Width
+            self.set_pixel(device, self.camera_width , self.camera_height)
+            print('width height:',device.nodemap['Width'].value, device.nodemap['Height'].value)
 
-                nparray_reshaped = cv2.cvtColor(nparray_reshaped, cv2.COLOR_BAYER_RG2RGB)
-                if count % 4 == 1:
-                    cv2.imwrite(f'imgs/{path_time}.jpg', nparray_reshaped)
-                    # png_array = PIL_Image.fromarray(nparray_reshaped)
-                    # png_array.save(path, quality = 95) # quality high the size is big, max 100
+            device.nodemap['PixelFormat'].value = PixelFormat.BayerRG8
+            device.nodemap['ADCBitDepth'].value = 'Bits8'
+            # print(nodemap['ADCBitDepth'])
 
-                t3 += time.time()
-                #==== show =======
-                # frame = cv2.cvtColor(nparray_reshaped, cv2.COLOR_BGR2RGB)
-                frame = cv2.resize(nparray_reshaped,(int(self.camera_width/4), int(self.camera_height/4)))
-                cv2.imshow('preview', frame)
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
-                  
-                device.requeue_buffer(image_buffer)
-                t4 += time.time()
-                if count % interval == 0 and count != 0:
-                    print('total time:',(t4-t1) / interval)
-                    print('time:',(t2-t1)/interval, (t3-t2)/interval, (t4-t3)/interval)
-                    count = t1 = t2 = t3 = t4 = 0 
-            cv2.destroyAllWindows()
-        system.destroy_device()
+            # FPS
+            self.set_fps(device, device.nodemap['AcquisitionFrameRate'].max)
+            print('fps max', device.nodemap['AcquisitionFrameRate'].max)
+            print('fps',  device.nodemap['AcquisitionFrameRate'].value)
+            
+            # Exposure Time and Gain
+            self.set_exposure_time(device, self.exposure_time)
+            print(f'''Exposure Time : {device.nodemap['ExposureTime'].value}''')
+            self.set_gain(device, self.gain)
+            print(f'''gain: {device.nodemap['Gain'].value}''')
+            # ========================================================================
+            with device.start_stream(2):
+                count = 0
+                t1 = t2 = t3 = t4 = 0
+                interval = 40
+                while self.preview_is_running:
+                    count += 1
+                    t1 += time.time()
+
+                    image_buffer = device.get_buffer()
+                    nparray_reshaped = np.ctypeslib.as_array(image_buffer.pdata,shape=(image_buffer.height, image_buffer.width, int(image_buffer.bits_per_pixel / 8)))
+                    t2 += time.time()
+                    # ====  save file ======
+                    # path_time = self.time_update_function()
+                    path_time = f'file_{count}'
+                    nparray_reshaped.tofile(f'imgs/{path_time}.raw')
+
+                    nparray_reshaped = cv2.cvtColor(nparray_reshaped, cv2.COLOR_BAYER_RG2RGB)
+                    if count % 4 == 1:
+                        cv2.imwrite(f'imgs/{path_time}.jpg', nparray_reshaped)
+                        # png_array = PIL_Image.fromarray(nparray_reshaped)
+                        # png_array.save(path, quality = 95) # quality high the size is big, max 100
+                        with open(f'imgs/{path_time}.jpg', "rb") as image_file:     
+                            await websocket.send(image_file.read())
+                    t3 += time.time()
+                    #==== show =======
+                    # frame = cv2.cvtColor(nparray_reshaped, cv2.COLOR_BGR2RGB)
+                    # frame = cv2.resize(nparray_reshaped,(int(self.camera_width/4), int(self.camera_height/4)))
+                    # cv2.imshow('preview', frame)
+                    # if cv2.waitKey(1) & 0xFF == ord('q'):
+                    #     break
+
+                    device.requeue_buffer(image_buffer)
+                    t4 += time.time()
+                    if count % interval == 0 and count != 0:
+                        print('total time:',(t4-t1) / interval)
+                        print('time:',(t2-t1)/interval, (t3-t2)/interval, (t4-t3)/interval)
+                        count = t1 = t2 = t3 = t4 = 0 
+                # cv2.destroyAllWindows()
+            system.destroy_device()
+    
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop = asyncio.get_event_loop()
+        start_server = websockets.serve(preview_func, "127.0.0.1", 8061,reuse_port=True)
+        loop.run_until_complete(start_server)
+        loop.run_forever()
         print('finished preview')
+      
 
     def create_devices_with_tries(self):
         """
@@ -343,7 +380,7 @@ class lucid_camera:
         self.fps = device.nodemap['AcquisitionFrameRate'].value
         
     def time_update_function(self):
-        now = datetime.now()
+        now = datetime.datetime.now()
         return now.strftime('%Y%m%d_%H:%M:%S_%f')
 
 

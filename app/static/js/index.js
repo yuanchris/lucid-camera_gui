@@ -58,7 +58,6 @@ async function start_preview() {
     const show_para = document.querySelector('#show_parameters');
     show_server.innerHTML = 'status:'
     show_para.innerHTML = 'status:'
-
     const message = await fetch('start_preview', {
         method: 'GET',
     }).then((res => res.json()))  
@@ -70,6 +69,8 @@ async function start_preview() {
         show_preview.innerHTML = 'status: started preview ';
         get_all(message.data)
     }
+    window.open("view.html", "LiveView", "height=700,width=1200");
+
 }
 
 
