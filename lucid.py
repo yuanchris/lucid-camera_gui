@@ -23,6 +23,7 @@ class lucid_camera:
     def __init__(self):
         self.getImages_is_running = False
         self.preview_is_running = False
+        self.change_flag = False
 
         self.server_socket = None
         self.preview_socket = None
@@ -104,7 +105,7 @@ class lucid_camera:
                     self.preview_process = threading.Thread(target=self.start_preview_process)
                     self.preview_process.start()
 
-                    time.sleep(2)
+                    time.sleep(3)
                     data_to_send = dict()
                     data_to_send["success"] = True
                     data_to_send["data"] = {'fps': self.fps, 
@@ -116,9 +117,7 @@ class lucid_camera:
                     csock.send(json.dumps(data_to_send).encode('utf-8'))
 
                 elif receive_dict["message"] == 'submit_change':
-                    # self.getImages_is_running = False
-                    # self.preview_is_running = False
-                    # time.sleep(1)
+                    self.change_flag = True
 
                     print(receive_dict['data'])
                     data = receive_dict['data']
@@ -132,10 +131,7 @@ class lucid_camera:
                     data_to_send = dict()
                     data_to_send["success"] = True
                     csock.send(json.dumps(data_to_send).encode('utf-8'))
-                    time.sleep(1)
-                    # self.preview_is_running = True
-                    # self.preview_process = threading.Thread(target=self.start_preview_process)
-                    # self.preview_process.start()
+
                 else:
                     data_to_send = dict()
                     data_to_send["success"] = False
@@ -179,6 +175,11 @@ class lucid_camera:
             t1 = t2 = t3 = t4 = 0
             interval = 40
             while self.getImages_is_running:
+                if self.change_flag:
+                    self.set_exposure_time(device, self.exposure_time)
+                    self.set_gain(device, self.gain)
+                    self.change_flag = False
+            
                 count += 1
                 t1 += time.time()
 
@@ -191,8 +192,8 @@ class lucid_camera:
                 nparray_reshaped.tofile(f'imgs/{path_time}.raw')
 
                 nparray_reshaped = cv2.cvtColor(nparray_reshaped, cv2.COLOR_BAYER_RG2RGB)
-                if count % 4 == 1:
-                    cv2.imwrite(f'imgs/{path_time}.jpg', nparray_reshaped)
+                # if count % 4 == 1:
+                    # cv2.imwrite(f'imgs/{path_time}.jpg', nparray_reshaped)
                     # png_array = PIL_Image.fromarray(nparray_reshaped)
                     # png_array.save(path, quality = 95) # quality high the size is big, max 100
 
@@ -256,6 +257,12 @@ class lucid_camera:
                 t1 = t2 = t3 = t4 = 0
                 interval = 40
                 while self.preview_is_running:
+                    if self.change_flag:
+                        # self.set_pixel(device, self.camera_width , self.camera_height)
+                        self.set_exposure_time(device, self.exposure_time)
+                        self.set_gain(device, self.gain)
+                        self.change_flag = False
+    
                     count += 1
                     t1 += time.time()
 

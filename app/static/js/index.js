@@ -62,6 +62,8 @@ async function start_preview() {
         method: 'GET',
     }).then((res => res.json()))  
     console.log(message);
+
+    window.open("view.html", "LiveView", "height=700,width=1200");
     if (message.error){
         show_preview.innerHTML = 'status:' + message.error;
     } else {
@@ -69,7 +71,7 @@ async function start_preview() {
         show_preview.innerHTML = 'status: started preview ';
         get_all(message.data)
     }
-    window.open("view.html", "LiveView", "height=700,width=1200");
+    
 
 }
 
