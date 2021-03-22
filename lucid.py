@@ -46,7 +46,8 @@ class lucid_camera:
     def run(self):
         print("===============camera Started=================")
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)  # reuse tcp
+        # self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)  # reuse tcp
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # reuse tcp, python3.6 cannot use reuseport
         self.server_socket.bind(('127.0.0.1', 8060))
         self.server_socket.listen(5)
         print("[*] Server Listening on %s:%d " % ('127.0.0.1', 8060))
@@ -189,11 +190,11 @@ class lucid_camera:
                 # ====  save file ======
                 path_time = self.time_update_function()
                 # path_time = f'file_{count}'
-                nparray_reshaped.tofile(f'imgs/{path_time}.raw')
+                nparray_reshaped.tofile(f'imgs/raw/{path_time}.raw')
 
                 nparray_reshaped = cv2.cvtColor(nparray_reshaped, cv2.COLOR_BAYER_RG2RGB)
-                # if count % 4 == 1:
-                    # cv2.imwrite(f'imgs/{path_time}.jpg', nparray_reshaped)
+                if count % 4 == 1:
+                    cv2.imwrite(f'imgs/jpg/{path_time}.jpg', nparray_reshaped)
                     # png_array = PIL_Image.fromarray(nparray_reshaped)
                     # png_array.save(path, quality = 95) # quality high the size is big, max 100
 
@@ -218,15 +219,6 @@ class lucid_camera:
     
     def start_preview_process(self):
         print('start_preview_process')
-        # ==== preview socket ====
-
-        # loop = asyncio.new_event_loop()
-        # asyncio.set_event_loop(loop)
-        # start_server = websockets.serve(time, "127.0.0.1", 8061)
-        # asyncio.get_event_loop().run_until_complete(start_server)
-        # asyncio.get_event_loop().run_forever()
-
-
         async def preview_func(websocket,path):
             devices = self.create_devices_with_tries()
             device = devices[0]
@@ -239,7 +231,7 @@ class lucid_camera:
 
             device.nodemap['PixelFormat'].value = PixelFormat.BayerRG8
             device.nodemap['ADCBitDepth'].value = 'Bits8'
-            # print(nodemap['ADCBitDepth'])
+            print('ADCBitDepth:', device.nodemap['ADCBitDepth'])
 
             # FPS
             self.set_fps(device, device.nodemap['AcquisitionFrameRate'].max)
@@ -270,17 +262,18 @@ class lucid_camera:
                     nparray_reshaped = np.ctypeslib.as_array(image_buffer.pdata,shape=(image_buffer.height, image_buffer.width, int(image_buffer.bits_per_pixel / 8)))
                     t2 += time.time()
                     # ====  save file ======
-                    # path_time = self.time_update_function()
-                    path_time = f'file_{count}'
-                    nparray_reshaped.tofile(f'imgs/{path_time}.raw')
+                    path_time = self.time_update_function()
+                    # path_time = f'file_{count}'
+                    nparray_reshaped.tofile(f'imgs/raw/{path_time}.raw')
 
                     nparray_reshaped = cv2.cvtColor(nparray_reshaped, cv2.COLOR_BAYER_RG2RGB)
                     if count % 4 == 1:
-                        cv2.imwrite(f'imgs/{path_time}.jpg', nparray_reshaped)
+                        cv2.imwrite(f'imgs/jpg/{path_time}.jpg', nparray_reshaped)
                         # png_array = PIL_Image.fromarray(nparray_reshaped)
                         # png_array.save(path, quality = 95) # quality high the size is big, max 100
-                        with open(f'imgs/{path_time}.jpg', "rb") as image_file:     
+                        with open(f'imgs/jpg/{path_time}.jpg', "rb") as image_file:  
                             await websocket.send(image_file.read())
+                        # await websocket.send(cv2.imencode('.jpg', nparray_reshaped)[1].tostring())
                     t3 += time.time()
                     #==== show =======
                     # frame = cv2.cvtColor(nparray_reshaped, cv2.COLOR_BGR2RGB)
@@ -301,7 +294,8 @@ class lucid_camera:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop = asyncio.get_event_loop()
-        start_server = websockets.serve(preview_func, "127.0.0.1", 8061,reuse_port=True)
+        # start_server = websockets.serve(preview_func, "127.0.0.1", 8061,reuse_port=True)
+        start_server = websockets.serve(preview_func, "127.0.0.1", 8061) # python 3.6: no reuse_port
         loop.run_until_complete(start_server)
         loop.run_forever()
         print('finished preview')

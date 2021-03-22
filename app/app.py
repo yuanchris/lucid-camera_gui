@@ -112,4 +112,4 @@ def submit_change():
 if __name__ == "__main__":
     # app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.debug = True
-    app.run()
+    app.run(host="127.0.0.1", port=5001)
