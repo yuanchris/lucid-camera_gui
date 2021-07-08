@@ -1,4 +1,4 @@
 lucid camera gui
 
-server: lucid.py
-front-end: app/app.py 
+server: python lucid.py
+front-end: python app/app.py 
