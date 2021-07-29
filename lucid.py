@@ -24,7 +24,7 @@ class lucid_camera:
         self.getImages_is_running = False
         self.preview_is_running = False
         self.change_flag = False
-        self.ip = '10.2.8.124'
+
         self.server_socket = None
         self.preview_socket = None
 
@@ -35,7 +35,7 @@ class lucid_camera:
         self.camera_width = 4096
         self.camera_height = 2160
         self.gain = 0.0
-        self.exposure_time = 1000.0
+        self.exposure_time = 90000.0
 
         self.exposure_time_max = 0.0
         self.exposure_time_min = 0.0
@@ -106,7 +106,7 @@ class lucid_camera:
                     self.preview_process = threading.Thread(target=self.start_preview_process)
                     self.preview_process.start()
 
-                    time.sleep(2)
+                    time.sleep(3)
                     data_to_send = dict()
                     data_to_send["success"] = True
                     data_to_send["data"] = {'fps': self.fps, 
@@ -115,7 +115,6 @@ class lucid_camera:
                         'exposure_time_min': self.exposure_time_min, 
                         'gain': self.gain,
                         }
-
                     csock.send(json.dumps(data_to_send).encode('utf-8'))
 
                 elif receive_dict["message"] == 'submit_change':
@@ -127,6 +126,7 @@ class lucid_camera:
                     self.camera_height = int(data['camera_height'])
                     self.gain = float(data['gain'])
                     self.exposure_time = float(data['exposure_time'])
+
 
 
                     data_to_send = dict()
@@ -145,31 +145,23 @@ class lucid_camera:
     
     def start_getImages_thread(self):
         print('start_get_images_thread')
-        devices = self.create_devices_with_tries(self.ip)
-        device = None
-        for d in devices:
-            print(d)
-            if d.__str__().split("'")[-2] == self.ip:
-                device = d
-        # device = devices[2]
-        # print('devices:', devices)
-        print('now device:', device)
-
+        devices = self.create_devices_with_tries()
+        device = devices[0]
+        print(device)
 
         # ====================== setting  ===========================================================
         # Nodes Height Width
-        # self.set_pixel(device, self.camera_width , self.camera_height)
+        self.set_pixel(device, self.camera_width , self.camera_height)
         print('width height:',device.nodemap['Width'].value, device.nodemap['Height'].value)
 
         device.nodemap['PixelFormat'].value = PixelFormat.BayerRG8
-        print(device.nodemap['PixelFormat'].value)
-
-        device.nodemap['ADCBitDepth'].value = 'Bits12'
-        print('ADCBitDepth:', device.nodemap['ADCBitDepth'])
+        device.nodemap['ADCBitDepth'].value = 'Bits8'
+        # print(nodemap['ADCBitDepth'])
 
         # FPS
-        self.set_fps(device, device.nodemap['AcquisitionFrameRate'].max)
-        # self.set_fps(device, 30.0)
+        # self.set_fps(device, device.nodemap['AcquisitionFrameRate'].max)
+        self.set_fps(device, 20.0)
+
         print('fps max', device.nodemap['AcquisitionFrameRate'].max)
         print('fps',  device.nodemap['AcquisitionFrameRate'].value)
         
@@ -181,13 +173,12 @@ class lucid_camera:
         print(f'''gain: {device.nodemap['Gain'].value}''')
 
         # ========================================================================
-        with device.start_stream(1):
+        with device.start_stream(2):
             count = 0
             t1 = t2 = t3 = t4 = 0
             interval = 40
             while self.getImages_is_running:
                 if self.change_flag:
-                    # self.set_pixel(device, self.camera_width , self.camera_height)
                     self.set_exposure_time(device, self.exposure_time)
                     self.set_gain(device, self.gain)
                     self.change_flag = False
@@ -197,19 +188,17 @@ class lucid_camera:
 
                 image_buffer = device.get_buffer()
                 nparray_reshaped = np.ctypeslib.as_array(image_buffer.pdata,shape=(image_buffer.height, image_buffer.width, int(image_buffer.bits_per_pixel / 8)))
-                
+                t2 += time.time()
                 # ====  save file ======
                 path_time = self.time_update_function()
                 # path_time = f'file_{count}'
-                # nparray_reshaped.tofile(f'/ssd_2tb/lucid_image/raw/{path_time}.raw')
-                # nparray_reshaped = nparray_reshaped[::3,::3]
-                nparray_reshaped = cv2.cvtColor(nparray_reshaped, cv2.COLOR_BAYER_RG2RGB)
-                t2 += time.time()
-                cv2.imwrite(f'/ssd_2tb/lucid_image/jpg/{self.ip}/{path_time}.jpg', nparray_reshaped)
+                nparray_reshaped.tofile(f'/media/taoyuanipc1/disk/imgs/raw/{path_time}.raw')
+                # nparray_reshaped.tofile(f'imgs/raw/{path_time}.raw')
+
+                # nparray_reshaped = cv2.cvtColor(nparray_reshaped, cv2.COLOR_BAYER_RG2RGB)
                 # if count % 4 == 1:
-                    # cv2.imwrite(f'/ssd_2tb/lucid_image/{path_time}.jpg', nparray_reshaped)
-                    # png_array = PIL_Image.fromarray(nparray_reshaped)
-                    # png_array.save(path, quality = 95) # quality high the size is big, max 100
+                #     cv2.imwrite(f'/media/taoyuanipc1/disk/imgs/jpg/{path_time}.jpg', nparray_reshaped)
+
 
                 t3 += time.time()
                 #==== show =======
@@ -233,30 +222,21 @@ class lucid_camera:
     def start_preview_process(self):
         print('start_preview_process')
         async def preview_func(websocket,path):
-            devices = self.create_devices_with_tries(self.ip)
-            device = None
-            for d in devices:
-                print(d)
-                if d.__str__().split("'")[-2] == self.ip:
-                    device = d
-            # device = devices[2]
-            # print('devices:', devices)
-            print('now device:', device)
-
+            devices = self.create_devices_with_tries()
+            device = devices[0]
+            print(device)
 
             # ====================== setting  ===========================================================
             # Nodes Height Width
-            # self.set_pixel(device, self.camera_width , self.camera_height)
+            self.set_pixel(device, self.camera_width , self.camera_height)
             print('width height:',device.nodemap['Width'].value, device.nodemap['Height'].value)
 
             device.nodemap['PixelFormat'].value = PixelFormat.BayerRG8
-            print(device.nodemap['PixelFormat'].value)
-            device.nodemap['ADCBitDepth'].value = 'Bits12'
+            device.nodemap['ADCBitDepth'].value = 'Bits8'
             print('ADCBitDepth:', device.nodemap['ADCBitDepth'])
 
             # FPS
             self.set_fps(device, device.nodemap['AcquisitionFrameRate'].max)
-            # self.set_fps(device, 20.0)
             print('fps max', device.nodemap['AcquisitionFrameRate'].max)
             print('fps',  device.nodemap['AcquisitionFrameRate'].value)
             
@@ -266,7 +246,7 @@ class lucid_camera:
             self.set_gain(device, self.gain)
             print(f'''gain: {device.nodemap['Gain'].value}''')
             # ========================================================================
-            with device.start_stream(1):
+            with device.start_stream(2):
                 count = 0
                 t1 = t2 = t3 = t4 = 0
                 interval = 40
@@ -286,19 +266,15 @@ class lucid_camera:
                     # ====  save file ======
                     path_time = self.time_update_function()
                     # path_time = f'file_{count}'
-                    # nparray_reshaped.tofile(f'imgs/raw/{path_time}.raw')
-                    # nparray_reshaped.tofile(f'/ssd_2tb/lucid_image/raw/{self.ip}/{path_time}.raw')
-                    # nparray_reshaped = nparray_reshaped[::3,::3]
+                    # nparray_reshaped.tofile(f'/media/taoyuanipc1/disk/imgs/raw/{path_time}.raw')
+
                     nparray_reshaped = cv2.cvtColor(nparray_reshaped, cv2.COLOR_BAYER_RG2RGB)
-                    cv2.imwrite(f'img/jpg/{self.ip}/{path_time}.jpg', nparray_reshaped)
-                    if count % 10 == 1:
-                        # cv2.imwrite(f'imgs/jpg/{path_time}.jpg', nparray_reshaped)
-                        # cv2.imwrite(f'/ssd_2tb/lucid_image/jpg/{path_time}.jpg', nparray_reshaped)
-                        # png_array = PIL_Image.fromarray(nparray_reshaped)
-                        # png_array.save(path, quality = 95) # quality high the size is big, max 100
-                        with open(f'img/jpg/{self.ip}/{path_time}.jpg', "rb") as image_file:  
+                    if count % 4 == 1:
+                        cv2.imwrite(f'/media/taoyuanipc1/disk/imgs/jpg/{path_time}.jpg', nparray_reshaped)
+        
+                        with open(f'/media/taoyuanipc1/disk/imgs/jpg/{path_time}.jpg', "rb") as image_file:  
                             await websocket.send(image_file.read())
-                        # await websocket.send(cv2.imencode('.jpg', nparray_reshaped)[1].tostring())
+                            # await websocket.send(cv2.imencode('.jpg', nparray_reshaped)[1].tostring())
                     t3 += time.time()
                     #==== show =======
                     # frame = cv2.cvtColor(nparray_reshaped, cv2.COLOR_BGR2RGB)
@@ -326,7 +302,7 @@ class lucid_camera:
         print('finished preview')
       
 
-    def create_devices_with_tries(self, ip):
+    def create_devices_with_tries(self):
         """
         This function waits for the user to connect a device before raising
         an exception
@@ -335,7 +311,7 @@ class lucid_camera:
         tries_max = 6
         sleep_time_secs = 10
         while tries < tries_max:  # Wait for device for 60 seconds
-            devices = system.create_device(ip)
+            devices = system.create_device()
             if not devices:
                 print(
                     f'Try {tries+1} of {tries_max}: waiting for {sleep_time_secs} '
@@ -402,7 +378,7 @@ class lucid_camera:
         # else: 
         #     device.nodemap['AcquisitionFrameRate'].value = device.nodemap['AcquisitionFrameRate'].max
         device.nodemap['AcquisitionFrameRate'].value = fps
-        # device.nodemap['DeviceStreamChannelPacketSize'].value = device.nodemap['DeviceStreamChannelPacketSize'].max
+        device.nodemap['DeviceStreamChannelPacketSize'].value = device.nodemap['DeviceStreamChannelPacketSize'].max
         self.fps = device.nodemap['AcquisitionFrameRate'].value
         
     def time_update_function(self):
