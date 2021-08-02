@@ -18,6 +18,7 @@ from arena_api.enums import PixelFormat
 import datetime
 import base64
 from PIL import Image as PIL_Image  # pip install Pillow
+import myqueue
 # from my_camera import streaming
 class lucid_camera:
     def __init__(self):
@@ -30,6 +31,7 @@ class lucid_camera:
 
         self.getImages_thread = None
         self.preview_process = None
+        self.transform_thread = None
 
         # camera parameters 
         self.camera_width = 4096
@@ -41,8 +43,8 @@ class lucid_camera:
         self.exposure_time_min = 0.0
         self.fps = 0.0
         
-
-
+        self.queues = myqueue.Queue(1)
+        self.count = 0
     def run(self):
         print("===============camera Started=================")
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -76,6 +78,8 @@ class lucid_camera:
                         self.getImages_thread = threading.Thread(target=self.start_getImages_thread)
                         self.getImages_thread.start()
 
+                        self.transform_thread = threading.Thread(target=self.start_transform_thread)
+                        self.transform_thread.start()       
                         time.sleep(2)
                         data_to_send = dict()
                         data_to_send["success"] = True
@@ -141,7 +145,7 @@ class lucid_camera:
             except ConnectionResetError as e:
                 print("#main_system socket encounter error :", e)
 
-        csock.close()
+            csock.close()
     
     def start_getImages_thread(self):
         print('start_get_images_thread')
@@ -160,7 +164,7 @@ class lucid_camera:
 
         # FPS
         # self.set_fps(device, device.nodemap['AcquisitionFrameRate'].max)
-        self.set_fps(device, 20.0)
+        self.set_fps(device, 24.0)
 
         print('fps max', device.nodemap['AcquisitionFrameRate'].max)
         print('fps',  device.nodemap['AcquisitionFrameRate'].value)
@@ -174,7 +178,7 @@ class lucid_camera:
 
         # ========================================================================
         with device.start_stream(2):
-            count = 0
+            self.count = 0
             t1 = t2 = t3 = t4 = 0
             interval = 40
             while self.getImages_is_running:
@@ -183,7 +187,7 @@ class lucid_camera:
                     self.set_gain(device, self.gain)
                     self.change_flag = False
             
-                count += 1
+                self.count += 1
                 t1 += time.time()
 
                 image_buffer = device.get_buffer()
@@ -198,8 +202,8 @@ class lucid_camera:
                 # nparray_reshaped = cv2.cvtColor(nparray_reshaped, cv2.COLOR_BAYER_RG2RGB)
                 # if count % 4 == 1:
                 #     cv2.imwrite(f'/media/taoyuanipc1/disk/imgs/jpg/{path_time}.jpg', nparray_reshaped)
-
-
+                if self.count % 4 == 1:
+                    self.queues.put(f'/media/taoyuanipc1/disk/imgs/raw/{path_time}.raw')
                 t3 += time.time()
                 #==== show =======
                 # frame = cv2.cvtColor(nparray_reshaped, cv2.COLOR_BGR2RGB)
@@ -210,15 +214,34 @@ class lucid_camera:
                 
                 device.requeue_buffer(image_buffer)
                 t4 += time.time()
-                if count % interval == 0 and count != 0:
+                if self.count % interval == 0 and self.count != 0:
                     print('total time:',(t4-t1) / interval)
                     print('time:',(t2-t1)/interval, (t3-t2)/interval, (t4-t3)/interval)
-                    count = t1 = t2 = t3 = t4 = 0 
+                    self.count = t1 = t2 = t3 = t4 = 0 
             # cv2.destroyAllWindows()
 
         system.destroy_device()
         print('finished get_images')
     
+    def start_transform_thread(self):
+     
+        print('=== transform_thread is running ===')
+        while self.getImages_is_running:
+            raw_name = self.queues.get()           
+
+            # if self.count % 4 == 1:
+            # t1 = time.time()
+            image_array = np.fromfile(raw_name, dtype = np.uint8)
+            image_array = image_array.reshape(self.camera_height, self.camera_width)
+            nparray_reshaped = cv2.cvtColor(image_array, cv2.COLOR_BAYER_RG2RGB)
+            filename = raw_name.split("/")[-1].split(".")[0]
+            cv2.imwrite(f'/media/taoyuanipc1/disk/imgs/jpg/{filename}.jpg', nparray_reshaped)
+           
+                # print('tansform time:', time.time()- t1)
+            # count1 += 1
+            # if count1 % 1000 == 0 and count1 != 0:
+            #     count1 = 0
+
     def start_preview_process(self):
         print('start_preview_process')
         async def preview_func(websocket,path):

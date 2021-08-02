@@ -31,18 +31,18 @@ class LoggingEventHandler(FileSystemEventHandler):
 
         what = 'directory' if event.is_directory else 'file'
         self.logger.info("Created %s: %s", what, event.src_path)
-        if count % 2 == 1:
-            time.sleep(1)
-            t1 = time.time()
-            image_array = np.fromfile(event.src_path, dtype = np.uint8)
-            image_array = image_array.reshape(rows, cols)
-            nparray_reshaped = cv2.cvtColor(image_array, cv2.COLOR_BAYER_RG2RGB)
-            filename = event.src_path.split("/")[-1].split(".")[0]
-            cv2.imwrite(f'/media/taoyuanipc1/disk/imgs/jpg/{filename}.jpg', nparray_reshaped)
-            print('tansform time:', time.time()- t1)
-        count += 1
-        if count % 40 == 0 and count != 0:
-            count = 0
+        # if count % 2 == 1:
+        #     time.sleep(1)
+        #     t1 = time.time()
+        #     image_array = np.fromfile(event.src_path, dtype = np.uint8)
+        #     image_array = image_array.reshape(rows, cols)
+        #     nparray_reshaped = cv2.cvtColor(image_array, cv2.COLOR_BAYER_RG2RGB)
+        #     filename = event.src_path.split("/")[-1].split(".")[0]
+        #     cv2.imwrite(f'/media/taoyuanipc1/disk/imgs/jpg/{filename}.jpg', nparray_reshaped)
+        #     print('tansform time:', time.time()- t1)
+        # count += 1
+        # if count % 40 == 0 and count != 0:
+        #     count = 0
         # print(event.src_path)
         # try:
         #     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

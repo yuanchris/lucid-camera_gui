@@ -1,3 +1,4 @@
 {
-    "python.pythonPath": "home/Desktop/chris/envs/lucid-env/bin/python"
+    "python.defaultInterpreterPath": "/home/Desktop/chris/envs/lucid-env/bin/python"
+    
 }
