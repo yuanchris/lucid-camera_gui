@@ -32,7 +32,7 @@ class lucid_camera:
         self.getImages_thread = None
         self.preview_process = None
         self.transform_thread = None
-
+        self.sentToWeb_thread = None
         # camera parameters 
         self.camera_width = 4096
         self.camera_height = 2160
@@ -44,6 +44,7 @@ class lucid_camera:
         self.fps = 0.0
         
         self.queues = myqueue.Queue(1)
+        self.jpg = None
         self.count = 0
     def run(self):
         print("===============camera Started=================")
@@ -80,6 +81,9 @@ class lucid_camera:
 
                         self.transform_thread = threading.Thread(target=self.start_transform_thread)
                         self.transform_thread.start()       
+                        
+                        self.sentToWeb_thread = threading.Thread(target=self.start_sentToWeb_thread)
+                        self.sentToWeb_thread.start()     
                         time.sleep(2)
                         data_to_send = dict()
                         data_to_send["success"] = True
@@ -180,7 +184,7 @@ class lucid_camera:
         with device.start_stream(2):
             self.count = 0
             t1 = t2 = t3 = t4 = 0
-            interval = 40
+            interval = 100
             while self.getImages_is_running:
                 if self.change_flag:
                     self.set_exposure_time(device, self.exposure_time)
@@ -224,23 +228,59 @@ class lucid_camera:
         print('finished get_images')
     
     def start_transform_thread(self):
-     
         print('=== transform_thread is running ===')
         while self.getImages_is_running:
             raw_name = self.queues.get()           
-
-            # if self.count % 4 == 1:
-            # t1 = time.time()
             image_array = np.fromfile(raw_name, dtype = np.uint8)
             image_array = image_array.reshape(self.camera_height, self.camera_width)
             nparray_reshaped = cv2.cvtColor(image_array, cv2.COLOR_BAYER_RG2RGB)
             filename = raw_name.split("/")[-1].split(".")[0]
             cv2.imwrite(f'/media/taoyuanipc1/disk/imgs/jpg/{filename}.jpg', nparray_reshaped)
-           
-                # print('tansform time:', time.time()- t1)
-            # count1 += 1
-            # if count1 % 1000 == 0 and count1 != 0:
-            #     count1 = 0
+
+            self.jpg = f'/media/taoyuanipc1/disk/imgs/jpg/{filename}.jpg'
+
+    def start_sentToWeb_thread(self):
+        print('=== sentToWeb_thread is running ===')
+        serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        serversocket.bind(("127.0.0.1", 8062))
+        serversocket.setblocking(False) # set socket to non-blocking
+        serversocket.listen(5)
+
+        # count = t1 = t2 = t3 = 0
+        # interval = 40
+        while self.getImages_is_running:
+            client_list = []
+            try:
+                csock, addr = serversocket.accept()
+                # print('Connected by ', addr)
+                csock.settimeout(5)
+                client_list.append(csock)
+            except BlockingIOError:
+                pass
+            
+            jpg_name = self.jpg   
+            # count += 1
+
+            for client in client_list:
+                # t1 += time.time()
+     
+                # t2 += time.time()
+                with open(jpg_name, "rb") as image_file: 
+                    image =  image_file.read()
+                    csock.send(image)
+                    # print('image length', len(image))
+                # t3 += time.time()
+                # if count % interval == 0 and count != 0:
+                #     print('sent total time:',(t3-t1) / interval)
+                #     print('time:',(t2-t1)/interval, (t3-t2)/interval)
+                #     count = t1 = t2 = t3 = 0
+
+                client.close()
+                client_list.remove(client)       
+            # time.sleep(0.1)
+        serversocket.close()
+
 
     def start_preview_process(self):
         print('start_preview_process')

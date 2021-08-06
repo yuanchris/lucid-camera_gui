@@ -1,8 +1,48 @@
 from flask import Flask, render_template, request
 import socket, json
-
+from flask_socketio import SocketIO,emit
 app = Flask(__name__)
 
+socketio = SocketIO(app)
+# === socket ===
+@socketio.on('message')
+def handle_message(data):
+    print('received message: ' + data)
+
+@socketio.on('tracking')
+def tracking(message):
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    except socket.error as e:
+        print("Error:", e)
+        return json.dumps({"error": "establish error"})
+
+    try:
+        sock.connect(("127.0.0.1", 8062))
+        sock.settimeout(1)
+        # sock.setblocking(False)
+        result = []
+        receive_message = sock.recv(65536)
+        # result = receive_message
+        result.append(receive_message)
+        while (len(receive_message) > 0):
+            receive_message = sock.recv(65536)
+            result.append(receive_message)
+        result = b''.join(result)
+        # print('result length', len(result))
+        emit('send_track', result)
+    except BlockingIOError as e:
+        # print("BlockingIOError: ", e)
+        pass    
+    except socket.error as e:
+        print("[ERROR] ", e)
+        return json.dumps({"error": "connect error"})
+    
+    # print('===receive_message====',receive_message)
+    
+    sock.close()
+    # return json.dumps(receive_message)
+# ===========
 
 @app.route("/")
 def home():
@@ -112,4 +152,5 @@ def submit_change():
 if __name__ == "__main__":
     # app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.debug = True
-    app.run(host="127.0.0.1", port=5001)
+    # app.run(host="127.0.0.1", port=5001)
+    socketio.run(app, host="127.0.0.1", port=5001)

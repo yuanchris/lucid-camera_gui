@@ -1,18 +1,37 @@
-
-let ws = new WebSocket('ws://127.0.0.1:8061')
 var image = document.getElementById('image');
- 
-ws.binaryType = 'arraybuffer';
-ws.onmessage = function (event) {
+var socket = io();
+socket.on('connect', function() {
+    console.log('connect');
+    setInterval(function(){
+        socket.emit('tracking', {data: 'tacked board website connected!'});
+        // console.log('send tracking');
+    }, 200);
+    // console.log('send tracking')
+});
+
+socket.on('send_track', function(msg) {
+    // console.log(msg);
+    console.log(typeof msg);
+
+    var arrayBuffer = msg;
+
+    image.src = "data:image/jpeg;base64," + encode(new Uint8Array(arrayBuffer));    
+});
+
+
+
+
+
+// let ws = new WebSocket('ws://127.0.0.1:8061')
+// ws.binaryType = 'arraybuffer';
+// ws.onmessage = function (event) {
     
-    var arrayBuffer = event.data;
-    image.src = "data:image/jpeg;base64," + encode(new Uint8Array(arrayBuffer));
-};
-// window.onbeforeunload = function(){
-//     console.log('test')
-//     ws.onclose = function() {}; // disable onclose handler first 
-//     ws.close() 
-//  }
+//     var arrayBuffer = event.data;
+//     console.log(arrayBuffer)
+//     console.log(typeof arrayBuffer)
+//     image.src = "data:image/jpeg;base64," + encode(new Uint8Array(arrayBuffer));
+// };
+
 
 function encode (input) {
     var keyStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
