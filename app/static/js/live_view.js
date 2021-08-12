@@ -11,16 +11,10 @@ socket.on('connect', function() {
 
 socket.on('send_track', function(msg) {
     // console.log(msg);
-    console.log(typeof msg);
-
+    // console.log(typeof msg);
     var arrayBuffer = msg;
-
     image.src = "data:image/jpeg;base64," + encode(new Uint8Array(arrayBuffer));    
 });
-
-
-
-
 
 // let ws = new WebSocket('ws://127.0.0.1:8061')
 // ws.binaryType = 'arraybuffer';
@@ -31,7 +25,6 @@ socket.on('send_track', function(msg) {
 //     console.log(typeof arrayBuffer)
 //     image.src = "data:image/jpeg;base64," + encode(new Uint8Array(arrayBuffer));
 // };
-
 
 function encode (input) {
     var keyStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";

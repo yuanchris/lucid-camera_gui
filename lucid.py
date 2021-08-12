@@ -239,6 +239,7 @@ class lucid_camera:
 
             self.jpg = f'/media/taoyuanipc1/disk/imgs/jpg/{filename}.jpg'
 
+    # === soecketio version ====
     def start_sentToWeb_thread(self):
         print('=== sentToWeb_thread is running ===')
         serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -275,12 +276,38 @@ class lucid_camera:
                 #     print('sent total time:',(t3-t1) / interval)
                 #     print('time:',(t2-t1)/interval, (t3-t2)/interval)
                 #     count = t1 = t2 = t3 = 0
-
                 client.close()
                 client_list.remove(client)       
-            # time.sleep(0.1)
+            time.sleep(0.05)
         serversocket.close()
 
+    # ===  websocket version === 
+    # def start_sentToWeb_thread(self):
+    #     async def preview_func(websocket,path):
+    #         # count = t1 = t2 = t3 = 0
+    #         # interval = 40
+    #         while self.getImages_is_running:
+    #             jpg_name = self.jpg   
+    #             # count += 1
+    #                 # t1 += time.time()
+        
+    #                 # t2 += time.time()
+    #             with open(jpg_name, "rb") as image_file: 
+    #                 await websocket.send(image_file.read())
+    #                     # print('image length', len(image))
+    #                 # t3 += time.time()
+    #                 # if count % interval == 0 and count != 0:
+    #                 #     print('sent total time:',(t3-t1) / interval)
+    #                 #     print('time:',(t2-t1)/interval, (t3-t2)/interval)
+    #                 #     count = t1 = t2 = t3 = 0
+    #             time.sleep(0.15)
+    #     loop = asyncio.new_event_loop()
+    #     asyncio.set_event_loop(loop)
+    #     loop = asyncio.get_event_loop()
+    #     # start_server = websockets.serve(preview_func, "127.0.0.1", 8061,reuse_port=True)
+    #     start_server = websockets.serve(preview_func, "127.0.0.1", 8061) # python 3.6: no reuse_port
+    #     loop.run_until_complete(start_server)
+    #     loop.run_forever()
 
     def start_preview_process(self):
         print('start_preview_process')

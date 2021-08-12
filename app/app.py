@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request
-import socket, json
+import socket, json,time
 from flask_socketio import SocketIO,emit
 app = Flask(__name__)
 
@@ -11,12 +11,13 @@ def handle_message(data):
 
 @socketio.on('tracking')
 def tracking(message):
+    # t1 = time.time()
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     except socket.error as e:
         print("Error:", e)
         return json.dumps({"error": "establish error"})
-
+    # t2 = time.time()
     try:
         sock.connect(("127.0.0.1", 8062))
         sock.settimeout(1)
@@ -25,6 +26,7 @@ def tracking(message):
         receive_message = sock.recv(65536)
         # result = receive_message
         result.append(receive_message)
+        
         while (len(receive_message) > 0):
             receive_message = sock.recv(65536)
             result.append(receive_message)
@@ -37,9 +39,10 @@ def tracking(message):
     except socket.error as e:
         print("[ERROR] ", e)
         return json.dumps({"error": "connect error"})
-    
+    # t3 = time.time()
     # print('===receive_message====',receive_message)
-    
+    # print('track time total:', t3-t1)
+    # print('track time:', t2-t1, t3-t2)
     sock.close()
     # return json.dumps(receive_message)
 # ===========
