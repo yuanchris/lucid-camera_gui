@@ -209,7 +209,7 @@ class lucid_camera:
                 # ====  save file ======
                 path_time = self.time_update_function(image_buffer.timestamp_ns /1e9)
                 # path_time = f'file_{count}'
-                mPath  = f'/home/taoyuanipc1/Desktop/image_test/raw/{path_time}.raw'
+                mPath  = f'/home/taoyuan-ipc2/Desktop/image_test/raw/{path_time}.raw'
 
                 # nparray_reshaped.tofile(mPath)
 
@@ -247,7 +247,7 @@ class lucid_camera:
             img = img.reshape(self.camera_height, self.camera_width)
             img = cv2.cvtColor(img, cv2.COLOR_BAYER_RG2RGB)
             filename = name.split("/")[-1].split(".")[0] + '.' + name.split("/")[-1].split(".")[1]
-            mPath = f'/home/taoyuanipc1/Desktop/image_test/jpg/{filename}.jpg'
+            mPath = f'/home/taoyuan-ipc2/Desktop/image_test/jpg/{filename}.jpg'
             cv2.imwrite(mPath, img)
             self.jpgQue.put(mPath)
     # === soecketio version ====
